@@ -1,0 +1,111 @@
+﻿@page "/Pagina3"
+
+@inject HttpClient client;
+@using System.Net.Http.Json
+@using Clase3Corte.Data
+<PageTitle>Movies</PageTitle>
+<br />
+<MudButton OnClick = "(args) => AgregarNuevoRegistro()" Variant="Variant.Filled" Color="Color.Error">Añadir</MudButton>
+   
+
+<MudDataGrid T="Movies" Items="@Movies" ReadOnly="@_readOnly" EditMode="@(_isCellEditMode ? DataGridEditMode.Cell : DataGridEditMode.Form)"
+    StartedEditingItem="@StartedEditingItem" CancelledEditingItem="@CancelledEditingItem" CommittedItemChanges="@CommittedItemChanges"
+    Bordered="true" Dense="true" EditTrigger="@(_editTriggerRowClick ? DataGridEditTrigger.OnRowClick : DataGridEditTrigger.Manual)">
+    <Columns>
+        <Column T="Movies" Field="IdMovie" Title="Id" IsEditable="false" />
+        <Column T="Movies" Field="Year" Title="Year" />
+        <Column T="Movies" Field="Title" Title="Title" />
+        <Column T="Movies" Field="Director" Title="Director"/>
+        <Column T="Movies" Field="Genre" Title="Genre" />
+        <Column T="Movies" Field="Rating" Title="Rating" />
+        <Column T="Movies" Hidden="@(_isCellEditMode || _readOnly || _editTriggerRowClick)" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Edit" OnClick="@context.Actions.StartEditingItem" />
+                 <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Delete" OnClick="(args)=>EliminarEvento(context.Item)" />
+            </CellTemplate>
+        </Column>
+    </Columns>
+</MudDataGrid>
+
+
+
+@code {
+    private IEnumerable<Movies> Movies = new List<Movies>();
+    private bool _readOnly;
+    private bool _isCellEditMode;
+    private List<string> _events = new();
+    private bool _editTriggerRowClick;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var elemento = new List<Movies>();
+        client.BaseAddress = new Uri("https://localhost:7174/");
+        var RequestMessage = new HttpRequestMessage(HttpMethod.Get, "Biblioteca/ConsultarMovies");
+        var respuesta = await client.SendAsync(RequestMessage);
+
+        Movies = elemento;
+    }
+
+
+
+    async void EliminarEvento(Movies elemento)
+    {
+        var i = elemento.IdMovie;
+        ((List<Movies>)Movies).Remove(elemento);
+        //client.BaseAddress = new Uri("https://localhost:7174/");
+        var requestMessage = new HttpRequestMessage(HttpMethod.Delete, "Biblioteca/BorrarMovies?ID="+i+"");
+        var respuesta = await client.SendAsync(requestMessage);
+        StateHasChanged();
+    }
+
+
+    async Task AgregarNuevoRegistro()
+    {
+
+        var elemento = new Movies
+            {
+                IdMovie = 000,
+                Year = "Year",
+                Title = "Title",
+                Director = "Director",
+                Genre = "Genre",
+                Rating = 0-10,
+            };
+        ((List<Movies>)Movies).Add(elemento);
+        //client.BaseAddress = Uri("https:localhost:7174/");
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "Biblioteca/AgregarMovies?IdMovies=0000&Year=Year&Title=Title&Director=Director&Genre=Genre&Rating=Rating");
+        var respuesta = await client.SendAsync(requestMessage);
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+
+        }
+        StateHasChanged();
+
+    }
+
+    // events
+    void StartedEditingItem(Movies item)
+    {
+        _events.Insert(0, $"Event = StartedEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CancelledEditingItem(Movies item)
+    {
+        _events.Insert(0, $"Event = CancelledEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CommittedItemChanges(Movies item)
+    {
+        var id = item.IdMovie;
+        var year = item.Year;
+        var title = item.Title;
+        var dir = item.Director;
+        var gen = item.Genre;
+        var rat = item.Rating;
+        var requestMessage = new HttpRequestMessage(HttpMethod.Put, "Biblioteca/ActualizarMovies?ID="+id+"&ID="+id+"&Year="+year+"&Title="+title+"&Director="+dir+"&Genre="+gen+"&Rating="+rat);
+       
+        _events.Insert(0, $"Event = CommittedItemChanges, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    
+    StateHasChanged();
+}
+}
